@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ server.name }} · Operations Portal{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">{{ server.name }}</h1>
+  {% if current_user.role == 'admin' %}
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary" href="{{ url_for('servers.edit', server_id=server.id) }}">Edit</a>
+      {% if server.is_active %}
+        <form method="post" action="{{ url_for('servers.deactivate', server_id=server.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-outline-danger" type="submit">Deactivate</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('servers.activate', server_id=server.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-outline-success" type="submit">Activate</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+<div class="card mb-4"><div class="card-body">
+  <dl class="row mb-0">
+    <dt class="col-sm-3">Hostname</dt><dd class="col-sm-9">{{ server.hostname }}</dd>
+    <dt class="col-sm-3">IP address</dt><dd class="col-sm-9">{{ server.ip_address }}</dd>
+    <dt class="col-sm-3">Environment</dt><dd class="col-sm-9">{{ server.environment }}</dd>
+    <dt class="col-sm-3">OS</dt><dd class="col-sm-9">{{ server.os_type }}</dd>
+    <dt class="col-sm-3">Status</dt><dd class="col-sm-9"><span class="badge text-bg-{{ badge_class(server.status) }}">{{ server.status }}</span></dd>
+    <dt class="col-sm-3">Monitoring target</dt><dd class="col-sm-9">{{ server.monitoring_target or '—' }}</dd>
+    <dt class="col-sm-3">Automation group</dt><dd class="col-sm-9">{{ server.automation_group or '—' }}</dd>
+    <dt class="col-sm-3">Azure resource ID</dt><dd class="col-sm-9"><code>{{ server.azure_resource_id or 'Not linked' }}</code></dd>
+    <dt class="col-sm-3">Active</dt><dd class="col-sm-9">{{ 'yes' if server.is_active else 'no' }}</dd>
+    <dt class="col-sm-3">Last seen</dt><dd class="col-sm-9">{{ server.last_seen_at | dt }}</dd>
+  </dl>
+</div></div>
+<h2 class="h5">Alerts</h2>
+<div class="table-responsive card mb-4">
+  <table class="table mb-0">
+    <thead><tr><th>Name</th><th>Severity</th><th>Status</th><th>Summary</th></tr></thead>
+    <tbody>
+      {% for alert in alerts %}
+        <tr>
+          <td>{{ alert.alert_name }}</td>
+          <td><span class="badge text-bg-{{ badge_class(alert.severity) }}">{{ alert.severity }}</span></td>
+          <td><span class="badge text-bg-{{ badge_class(alert.status) }}">{{ alert.status }}</span></td>
+          <td>{{ alert.summary }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-secondary">No alerts for this server.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<h2 class="h5">Jobs</h2>
+<div class="table-responsive card">
+  <table class="table mb-0">
+    <thead><tr><th>Action</th><th>Status</th><th>Executor</th><th>When</th></tr></thead>
+    <tbody>
+      {% for job in jobs %}
+        <tr>
+          <td>{{ job.action_key }}</td>
+          <td><span class="badge text-bg-{{ badge_class(job.status) }}">{{ job.status }}</span></td>
+          <td>{{ job.executor }}</td>
+          <td>{{ job.created_at | dt }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-secondary">No jobs for this server.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

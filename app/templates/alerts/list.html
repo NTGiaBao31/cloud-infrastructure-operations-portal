@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Alerts · Operations Portal{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Alerts</h1>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto">
+    <select class="form-select" name="severity">
+      <option value="">All severities</option>
+      {% for value in ['critical', 'warning', 'info'] %}
+        <option value="{{ value }}" {% if severity == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select class="form-select" name="status">
+      <option value="">All statuses</option>
+      {% for value in ['firing', 'acknowledged', 'resolved'] %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto"><button class="btn btn-outline-secondary" type="submit">Filter</button></div>
+</form>
+<div class="table-responsive card">
+  <table class="table mb-0 align-middle">
+    <thead>
+      <tr><th>Name</th><th>Server</th><th>Severity</th><th>Status</th><th>Summary</th><th>Started</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for alert in alerts %}
+        <tr>
+          <td>{{ alert.alert_name }}</td>
+          <td>{% if alert.server %}<a href="{{ url_for('servers.detail', server_id=alert.server.id) }}">{{ alert.server.name }}</a>{% else %}—{% endif %}</td>
+          <td><span class="badge text-bg-{{ badge_class(alert.severity) }}">{{ alert.severity }}</span></td>
+          <td><span class="badge text-bg-{{ badge_class(alert.status) }}">{{ alert.status }}</span></td>
+          <td>{{ alert.summary }}</td>
+          <td>{{ alert.starts_at | dt }}</td>
+          <td>
+            {% if alert.status == 'firing' and current_user.role in ['operator', 'admin'] %}
+              <form method="post" action="{{ url_for('alerts.acknowledge', alert_id=alert.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-primary" type="submit">Acknowledge</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-secondary">No alerts.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

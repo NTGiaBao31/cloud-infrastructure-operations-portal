@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Automation · Operations Portal{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Automation jobs</h1>
+  <span class="text-secondary">Executor: mock dry-run</span>
+</div>
+{% if current_user.role in ['operator', 'admin'] %}
+  <form method="post" action="{{ url_for('automation.create_job') }}" class="card mb-4">
+    <div class="card-body">
+      <h2 class="h5">Run an allow-listed action</h2>
+      <p class="text-secondary">The portal sends an action key and declared parameters. Disk cleanup stays a dry-run. Commands and playbook paths are rejected.</p>
+      {{ form.hidden_tag() }}
+      <div class="row g-3">
+        <div class="col-md-4">
+          {{ form.server_id.label(class="form-label") }}
+          {{ form.server_id(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.action_key.label(class="form-label") }}
+          {{ form.action_key(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.simulate.label(class="form-label") }}
+          {{ form.simulate(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.service_name.label(class="form-label") }}
+          {{ form.service_name(class="form-control", placeholder="nginx") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.container_name.label(class="form-label") }}
+          {{ form.container_name(class="form-control", placeholder="worker") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.path.label(class="form-label") }}
+          {{ form.path(class="form-control", placeholder="var-log") }}
+        </div>
+      </div>
+      <p class="small text-secondary mt-3 mb-2">Use a name token such as <code>nginx</code> or <code>var-log</code>. The live executor does not run Ansible, PowerShell, or shell.</p>
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+{% endif %}
+<div class="table-responsive card">
+  <table class="table mb-0 align-middle">
+    <thead>
+      <tr><th>When</th><th>Server</th><th>Action</th><th>Trigger</th><th>Executor</th><th>Status</th><th>Output</th></tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+        <tr>
+          <td>{{ job.created_at | dt }}</td>
+          <td>{% if job.server %}{{ job.server.name }}{% else %}—{% endif %}</td>
+          <td>{{ job.action_key }}</td>
+          <td><span class="badge text-bg-{{ badge_class(job.trigger_source) }}">{{ job.trigger_source }}</span></td>
+          <td>{{ job.executor }}</td>
+          <td><span class="badge text-bg-{{ badge_class(job.status) }}">{{ job.status }}</span></td>
+          <td>{% if job.output_excerpt %}<pre class="output small">{{ job.output_excerpt }}</pre>{% else %}—{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-secondary">No jobs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

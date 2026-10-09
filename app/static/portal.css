@@ -1,0 +1,23 @@
+body {
+  background: #f4f6f8;
+}
+
+.navbar-brand {
+  font-weight: 600;
+}
+
+pre.output {
+  white-space: pre-wrap;
+  max-height: 8rem;
+  margin-bottom: 0;
+}
+
+.badge.text-bg-light {
+  color: #212529;
+  border: 1px solid #dee2e6;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}

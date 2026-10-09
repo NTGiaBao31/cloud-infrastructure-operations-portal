@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Servers · Operations Portal{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Servers</h1>
+  {% if current_user.role == 'admin' %}
+    <a class="btn btn-primary" href="{{ url_for('servers.create') }}">Add server</a>
+  {% endif %}
+</div>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto">
+    <select class="form-select" name="status">
+      <option value="">All statuses</option>
+      {% for value in ['online', 'warning', 'down', 'maintenance', 'unknown'] %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select class="form-select" name="os_type">
+      <option value="">All OS types</option>
+      <option value="linux" {% if os_type == 'linux' %}selected{% endif %}>linux</option>
+      <option value="windows" {% if os_type == 'windows' %}selected{% endif %}>windows</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <input class="form-control" name="environment" placeholder="Environment" value="{{ environment }}">
+  </div>
+  <div class="col-auto"><button class="btn btn-outline-secondary" type="submit">Filter</button></div>
+</form>
+<div class="table-responsive card">
+  <table class="table mb-0 align-middle">
+    <thead>
+      <tr><th>Name</th><th>Address</th><th>Environment</th><th>OS</th><th>Status</th><th>Active</th></tr>
+    </thead>
+    <tbody>
+      {% for server in servers %}
+        <tr>
+          <td><a href="{{ url_for('servers.detail', server_id=server.id) }}">{{ server.name }}</a></td>
+          <td>{{ server.ip_address }}</td>
+          <td>{{ server.environment }}</td>
+          <td><span class="badge text-bg-{{ badge_class(server.os_type) }}">{{ server.os_type }}</span></td>
+          <td><span class="badge text-bg-{{ badge_class(server.status) }}">{{ server.status }}</span></td>
+          <td>{{ 'yes' if server.is_active else 'no' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-secondary">No servers match this filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

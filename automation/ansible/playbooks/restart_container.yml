@@ -1,0 +1,9 @@
+---
+# Stub playbook. The MVP does not execute this file.
+- name: restart_container
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: placeholder
+      debug:
+        msg: restart_container is not executed by the MVP

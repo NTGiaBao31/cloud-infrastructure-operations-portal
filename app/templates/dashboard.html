@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Operations Portal{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Dashboard</h1>
+  <span class="badge text-bg-{{ 'success' if prometheus_available else 'secondary' }}">
+    Prometheus {{ 'connected' if prometheus_available else 'unavailable' }}
+  </span>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Servers</div><div class="metric-value">{{ server_total }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Open alerts</div><div class="metric-value">{{ open_alerts }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Critical open</div><div class="metric-value">{{ severity_counts.get('critical', 0) }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Warning open</div><div class="metric-value">{{ severity_counts.get('warning', 0) }}</div></div></div></div>
+</div>
+<div class="row g-3 mb-4">
+  {% for name in ['online', 'warning', 'down', 'maintenance', 'unknown'] %}
+    <div class="col"><div class="card"><div class="card-body py-2"><span class="badge text-bg-{{ badge_class(name) }}">{{ name }}</span> {{ status_counts.get(name, 0) }}</div></div></div>
+  {% endfor %}
+</div>
+<h2 class="h5">Live metrics</h2>
+<div class="row g-3 mb-4">
+  {% for label, key in [('Availability', 'availability'), ('CPU', 'cpu'), ('Memory', 'memory'), ('Disk', 'disk')] %}
+    <div class="col-md-3">
+      <div class="card"><div class="card-body">
+        <div class="text-secondary">{{ label }}</div>
+        <div class="metric-value">{{ metrics[key] }}</div>
+      </div></div>
+    </div>
+  {% endfor %}
+</div>
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5">Grafana</h2>
+    {% if grafana_url %}
+      <a class="btn btn-outline-primary" href="{{ grafana_url }}" target="_blank" rel="noopener">Open Grafana</a>
+    {% else %}
+      <p class="mb-0 text-secondary">Grafana is not configured.</p>
+    {% endif %}
+  </div>
+</div>
+<h2 class="h5">Recent jobs</h2>
+<div class="table-responsive card">
+  <table class="table mb-0">
+    <thead><tr><th>Action</th><th>Status</th><th>Executor</th><th>When</th></tr></thead>
+    <tbody>
+      {% for job in recent_jobs %}
+        <tr>
+          <td>{{ job.action_key }}</td>
+          <td><span class="badge text-bg-{{ badge_class(job.status) }}">{{ job.status }}</span></td>
+          <td>{{ job.executor }}</td>
+          <td>{{ job.created_at | dt }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-secondary">No jobs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
