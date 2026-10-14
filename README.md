@@ -4,6 +4,13 @@ Local Flask portal for server inventory, alerts, mock automation, and audit hist
 
 Python 3.11, SQLite, and an English Bootstrap UI. Prometheus, Grafana, Ansible, PowerShell, Shell, and Azure stay behind adapters. The portal still runs when those services are absent. Automation defaults to a mock executor and does not change target machines.
 
+## Design Documents
+
+- [Application architecture](docs/application-architecture.md)
+- [Entity relationship diagram](docs/erd.md)
+- [UI wireframes](docs/ui-wireframes.md)
+- [Prometheus and Ansible integration plan](docs/prometheus-ansible-integration-plan.md)
+
 ## Setup
 
 ```powershell
