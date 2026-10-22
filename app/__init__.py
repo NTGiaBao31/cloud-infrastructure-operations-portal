@@ -10,7 +10,7 @@ from app.config import ROOT, build_config
 from app.extensions import csrf, db, login_manager, migrate
 from app.presentation import badge_class
 
-PUBLIC_ENDPOINTS = {"healthz", "auth.login", "static", "index"}
+PUBLIC_ENDPOINTS = {"healthz", "auth.login", "static", "index", "webhooks.alertmanager"}
 
 
 def create_app(test_config=None):

@@ -19,14 +19,14 @@ def test_seed_is_idempotent_and_updates_natural_keys(app):
     first = runner.invoke(args=["seed-demo"])
     assert first.exit_code == 0
     with app.app_context():
-        assert _counts() == {"users": 3, "servers": 6, "alerts": 7, "jobs": 8, "audits": 12}
+        assert _counts() == {"users": 3, "servers": 10, "alerts": 7, "jobs": 8, "audits": 12}
         server = db.session.scalar(select(Server).where(Server.name == "db-01"))
         server.status = "online"
         db.session.commit()
     second = runner.invoke(args=["seed-demo"])
     assert second.exit_code == 0
     with app.app_context():
-        assert _counts() == {"users": 3, "servers": 6, "alerts": 7, "jobs": 8, "audits": 12}
+        assert _counts() == {"users": 3, "servers": 10, "alerts": 7, "jobs": 8, "audits": 12}
         server = db.session.scalar(select(Server).where(Server.name == "db-01"))
         assert server.status == "warning"
         azure = db.session.scalar(select(Server).where(Server.name == "azure-vm-01"))

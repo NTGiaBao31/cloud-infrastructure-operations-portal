@@ -10,6 +10,7 @@ POLICIES = {
     "service_down": "restart_service",
     "container_down": "restart_container",
     "disk_high": "disk_cleanup",
+    "InstanceDown": "restart_service",
 }
 
 

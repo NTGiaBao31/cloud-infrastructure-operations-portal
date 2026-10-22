@@ -1,0 +1,8 @@
+# Mẫu receiver Alertmanager. Thay IP Tailscale của laptop.
+route:
+  receiver: operations-portal
+receivers:
+  - name: operations-portal
+    webhook_configs:
+      - url: http://100.104.150.97:5000/api/alerts/webhook
+        send_resolved: true

@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from sqlalchemy import select
 
 from app.extensions import db
-from app.models import Alert, Server, utcnow
+from app.models import Alert, utcnow
+from app.services.audit import record
+from app.services.inventory import match_server
 from app.services.prometheus import PrometheusUnavailable, client_from_app
 from app.services.remediation import maybe_remediate
 
@@ -24,13 +26,14 @@ def sync_alerts(client=None):
     try:
         remote_alerts = prometheus.list_alerts()
     except PrometheusUnavailable as exc:
+        record("prometheus.unavailable", "prometheus", None, {"message": str(exc), "source": "sync"})
         return SyncResult(False, str(exc))
 
     seen = set()
     created = updated = resolved = reopened = remediated = 0
     for remote in remote_alerts:
         seen.add(remote.fingerprint)
-        outcome, alert, opened = _upsert(remote)
+        outcome, alert, opened = upsert_remote(remote, source="prometheus")
         if outcome == "created":
             created += 1
         elif outcome == "updated":
@@ -57,25 +60,25 @@ def sync_alerts(client=None):
     )
 
 
-def _upsert(remote):
+def upsert_remote(remote, source="prometheus"):
     matches = list(
         db.session.scalars(select(Alert).where(Alert.fingerprint == remote.fingerprint).order_by(Alert.id.desc()))
     )
     status = _status_for(remote.state)
-    server = _match_server(remote)
+    server = match_server(remote.instance, labels=remote.labels or {})
     if not matches:
         alert = Alert(
             server_id=server.id if server else None,
             fingerprint=remote.fingerprint,
             alert_name=remote.alert_name,
             category=remote.category,
-            source="prometheus",
+            source=source,
             severity=remote.severity,
             status=status,
             summary=remote.summary,
             description=remote.description,
             starts_at=remote.starts_at or utcnow(),
-            resolved_at=utcnow() if status == "resolved" else None,
+            resolved_at=(getattr(remote, "ends_at", None) or utcnow()) if status == "resolved" else None,
             created_at=utcnow(),
         )
         db.session.add(alert)
@@ -96,7 +99,7 @@ def _upsert(remote):
         outcome = "updated"
     elif status == "resolved" and alert.status != "resolved":
         alert.status = "resolved"
-        alert.resolved_at = alert.resolved_at or utcnow()
+        alert.resolved_at = getattr(remote, "ends_at", None) or alert.resolved_at or utcnow()
         outcome = "resolved"
     elif alert.status == "acknowledged" and status == "firing":
         outcome = "updated"
@@ -105,10 +108,10 @@ def _upsert(remote):
             outcome = "resolved" if status == "resolved" else "updated"
         alert.status = status
         if status == "resolved":
-            alert.resolved_at = alert.resolved_at or utcnow()
+            alert.resolved_at = getattr(remote, "ends_at", None) or alert.resolved_at or utcnow()
     alert.alert_name = remote.alert_name
     alert.category = remote.category
-    alert.source = "prometheus"
+    alert.source = source
     alert.severity = remote.severity
     alert.summary = remote.summary
     alert.description = remote.description
@@ -133,38 +136,8 @@ def _resolve_missing(seen):
     return count
 
 
-def _match_server(remote):
-    candidates = []
-    labels = remote.labels or {}
-    for key in ("monitoring_target", "instance", "hostname", "host", "ip"):
-        value = labels.get(key)
-        if value:
-            candidates.append(str(value))
-    if remote.instance and remote.instance not in candidates:
-        candidates.append(remote.instance)
-    expanded = []
-    for candidate in candidates:
-        expanded.append(candidate)
-        if ":" in candidate:
-            expanded.append(candidate.split(":", 1)[0])
-    servers = list(db.session.scalars(select(Server)))
-    by_target = {server.monitoring_target: server for server in servers if server.monitoring_target}
-    by_host = {server.hostname: server for server in servers}
-    by_ip = {server.ip_address: server for server in servers}
-    for candidate in expanded:
-        if candidate in by_target:
-            return by_target[candidate]
-    for candidate in expanded:
-        if candidate in by_host:
-            return by_host[candidate]
-    for candidate in expanded:
-        if candidate in by_ip:
-            return by_ip[candidate]
-    return None
-
-
 def _status_for(state):
-    if state == "inactive":
+    if state in {"inactive", "resolved"}:
         return "resolved"
     return "firing"
 

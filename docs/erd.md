@@ -1,4 +1,4 @@
-# Entity Relationship Diagram
+# Sơ đồ thực thể
 
 ```mermaid
 erDiagram
@@ -70,18 +70,20 @@ erDiagram
         string ip_address
         datetime created_at
     }
-    SERVERS o|--o{ ALERTS : has
-    USERS o|--o{ ALERTS : acknowledges
-    SERVERS o|--o{ AUTOMATION_JOBS : runs_on
-    ALERTS o|--o{ AUTOMATION_JOBS : triggers
-    USERS o|--o{ AUTOMATION_JOBS : requests
-    USERS o|--o{ AUDIT_LOGS : creates
+    SERVERS o|--o{ ALERTS : co
+    USERS o|--o{ ALERTS : xac_nhan
+    SERVERS o|--o{ AUTOMATION_JOBS : chay_tren
+    ALERTS o|--o{ AUTOMATION_JOBS : kich_hoat
+    USERS o|--o{ AUTOMATION_JOBS : yeu_cau
+    USERS o|--o{ AUDIT_LOGS : tao
 ```
 
-## Data Rules
+## Quy tắc dữ liệu
 
-- A server can have many alerts and automation jobs; their foreign keys are set to `NULL` if a server is removed.
-- An alert can be acknowledged by one user and associated with multiple remediation jobs.
-- An automation job is created for one server and can optionally originate from an alert and user request.
-- Audit records keep the actor when available and preserve an immutable action history.
-- SQLite foreign-key enforcement is enabled; the migration indexes commonly filtered columns.
+- Một máy chủ có nhiều cảnh báo và nhiều công việc tự động hóa. Khóa ngoại của chúng được đặt thành `NULL` nếu máy chủ bị xóa.
+- Một cảnh báo do một người dùng xác nhận và có thể gắn với nhiều công việc khắc phục.
+- Một công việc tự động hóa được tạo cho một máy chủ, và có thể xuất phát từ một cảnh báo cùng một yêu cầu của người dùng.
+- Bản ghi nhật ký giữ người thực hiện khi có thông tin đó, và giữ lịch sử hành động không bị sửa.
+- SQLite bật kiểm tra khóa ngoại. Bản nâng cấp cơ sở dữ liệu đánh chỉ mục các cột thường được lọc.
+
+Tên cột trong sơ đồ giữ đúng tên trong cơ sở dữ liệu. Năm bảng là `users`, `servers`, `alerts`, `automation_jobs` và `audit_logs`.

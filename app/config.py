@@ -68,6 +68,8 @@ def build_config():
         "AUTOMATION_EXECUTOR": os.environ.get("AUTOMATION_EXECUTOR", "mock").strip() or "mock",
         "AUTO_REMEDIATION_ENABLED": _bool("AUTO_REMEDIATION_ENABLED", False),
         "GRAFANA_BASE_URL": _grafana_url(),
+        "ALERTMANAGER_WEBHOOK_TOKEN": (os.environ.get("ALERTMANAGER_WEBHOOK_TOKEN") or "").strip() or None,
+        "PROBE_TIMEOUT_SECONDS": _float("PROBE_TIMEOUT_SECONDS", 2),
         "JOB_OUTPUT_MAX_CHARS": _int("JOB_OUTPUT_MAX_CHARS", 4000),
         "DEMO_USER_PASSWORD": os.environ.get("DEMO_USER_PASSWORD", ""),
     }

@@ -87,6 +87,46 @@ def test_dashboard_metrics_show_na_for_bad_payload(app, monkeypatch):
 
     monkeypatch.setattr("app.services.metrics.client_from_app", lambda: FakeClient())
     with app.app_context():
-        values, status = collect_metrics()
+        values, hosts, status = collect_metrics(probe_http=lambda url, timeout=2: False, probe_tcp=lambda host, port, timeout=2: False)
     assert status.available is True
     assert values == {"availability": "N/A", "cpu": "N/A", "memory": "N/A", "disk": "N/A"}
+    assert hosts[0]["cpu"] == "N/A"
+    assert hosts[0]["name"] == "WEB01"
+    assert hosts[0]["status"] == "Unreachable"
+    assert hosts[0]["exporter"] == "DOWN"
+
+
+def test_host_status_is_degraded_when_only_the_service_is_down(app, monkeypatch):
+    class FakeClient:
+        def health(self):
+            return IntegrationStatus(True, "ok")
+
+        def instant_query(self, query, time=None):
+            if query.startswith("up{"):
+                return QueryResult(True, data={"result": [{"value": [1, "1"]}]})
+            if "node_boot_time" in query:
+                return QueryResult(True, data={"result": [{"value": [1, "90000"]}]})
+            return QueryResult(True, data={"result": [{"value": [1, "12.5"]}]})
+
+    monkeypatch.setattr("app.services.metrics.client_from_app", lambda: FakeClient())
+    with app.app_context():
+        _values, hosts, status = collect_metrics(
+            probe_http=lambda url, timeout=2: False,
+            probe_tcp=lambda host, port, timeout=2: True,
+        )
+    by_name = {host["name"]: host for host in hosts}
+    assert status.available is True
+    assert by_name["WEB01"]["status"] == "Degraded"
+    assert by_name["WEB01"]["exporter"] == "UP"
+    assert by_name["WEB01"]["services"][0]["status"] == "DOWN"
+    assert by_name["WEB01"]["cpu"] == "12.5%"
+    assert by_name["WIN01"]["status"] == "Healthy"
+    assert by_name["MON01"]["exporter_label"] == "Node Exporter :9100"
+    assert by_name["MON01"]["instance"] == "192.168.10.10:9100"
+    assert by_name["MON01"]["cpu"] == "12.5%"
+    assert [service["name"] for service in by_name["MON01"]["services"]] == [
+        "Prometheus :9090",
+        "Alertmanager :9093",
+        "Grafana :3000",
+    ]
+    assert by_name["MON01"]["status"] == "Degraded"

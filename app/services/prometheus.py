@@ -33,6 +33,7 @@ class PrometheusAlert:
     description: str
     state: str
     starts_at: datetime | None
+    ends_at: datetime | None = None
     labels: dict = field(default_factory=dict)
     annotations: dict = field(default_factory=dict)
     instance: str | None = None
@@ -176,6 +177,7 @@ def _parse_alert(item):
         description=str(annotations.get("description") or ""),
         state=state,
         starts_at=parse_time(item.get("activeAt") or item.get("startsAt")),
+        ends_at=parse_time(item.get("endsAt")),
         labels=labels,
         annotations=annotations,
         instance=None if instance is None else str(instance),

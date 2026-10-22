@@ -1,60 +1,183 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Operations Portal{% endblock %}
+{% macro pill(status) -%}
+  <span class="pill pill-{{ status|lower }}">{{ status }}</span>
+{%- endmacro %}
+{% macro meter(value) -%}
+  {% if value is none %}
+    <div class="meter empty"><span></span></div>
+  {% else %}
+    <div class="meter {% if value >= 85 %}bad{% elif value >= 70 %}warn{% endif %}"><span style="width: {{ [value, 100]|min }}%"></span></div>
+  {% endif %}
+{%- endmacro %}
+{% macro service_chips(host) -%}
+  <button type="button" class="chip {{ host.exporter|lower }}" title="{{ host.exporter_label }} {{ host.exporter }}" data-host="{{ host.name }}" data-check="{{ host.exporter_label }}">{{ host.exporter_short }}</button>
+  {% for service in host.services %}
+    <button type="button" class="chip {{ service.status|lower }}" title="{{ service.name }} {{ service.status }}" data-host="{{ host.name }}" data-check="{{ service.name }}">{{ service.short }}</button>
+  {% endfor %}
+{%- endmacro %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 mb-0">Dashboard</h1>
-  <span class="badge text-bg-{{ 'success' if prometheus_available else 'secondary' }}">
-    Prometheus {{ 'connected' if prometheus_available else 'unavailable' }}
-  </span>
-</div>
-<div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Servers</div><div class="metric-value">{{ server_total }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Open alerts</div><div class="metric-value">{{ open_alerts }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Critical open</div><div class="metric-value">{{ severity_counts.get('critical', 0) }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary">Warning open</div><div class="metric-value">{{ severity_counts.get('warning', 0) }}</div></div></div></div>
-</div>
-<div class="row g-3 mb-4">
-  {% for name in ['online', 'warning', 'down', 'maintenance', 'unknown'] %}
-    <div class="col"><div class="card"><div class="card-body py-2"><span class="badge text-bg-{{ badge_class(name) }}">{{ name }}</span> {{ status_counts.get(name, 0) }}</div></div></div>
-  {% endfor %}
-</div>
-<h2 class="h5">Live metrics</h2>
-<div class="row g-3 mb-4">
-  {% for label, key in [('Availability', 'availability'), ('CPU', 'cpu'), ('Memory', 'memory'), ('Disk', 'disk')] %}
-    <div class="col-md-3">
-      <div class="card"><div class="card-body">
-        <div class="text-secondary">{{ label }}</div>
-        <div class="metric-value">{{ metrics[key] }}</div>
-      </div></div>
+<section class="kpi-grid">
+  <article class="kpi">
+    <div class="label">Total servers</div>
+    <div class="value" id="kpi-servers">{{ kpis.servers }}</div>
+    <div class="hint">Lab hosts</div>
+  </article>
+  <article class="kpi">
+    <div class="label">Healthy</div>
+    <div class="value text-success" id="kpi-healthy">{{ kpis.healthy }}</div>
+  </article>
+  <article class="kpi {% if kpis.degraded %}attention{% endif %}">
+    <div class="label">Degraded</div>
+    <div class="value text-warning" id="kpi-degraded">{{ kpis.degraded }}</div>
+  </article>
+  <article class="kpi {% if kpis.unreachable %}critical{% endif %}">
+    <div class="label">Unreachable</div>
+    <div class="value text-danger" id="kpi-unreachable">{{ kpis.unreachable }}</div>
+  </article>
+  <article class="kpi {% if kpis.firing_alerts %}attention{% endif %}">
+    <div class="label">Active alerts</div>
+    <div class="value" id="kpi-alerts">{{ kpis.firing_alerts }}</div>
+    <div class="hint"><span id="kpi-down-services">{{ kpis.down_services }}</span> checks down</div>
+  </article>
+  <article class="kpi {% if not prometheus_available %}critical{% endif %}">
+    <div class="label">Monitoring backend</div>
+    <div class="value" id="kpi-backend">{{ 'Online' if prometheus_available else 'Down' }}</div>
+    <div class="hint">Prometheus API :9090</div>
+  </article>
+</section>
+
+<section class="split-grid">
+  <div class="panel">
+    <h2>Host status <span class="small text-secondary">Click a red service for logs</span></h2>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Hostname</th>
+            <th>IP</th>
+            <th>Overall status</th>
+            <th>CPU</th>
+            <th>Memory</th>
+            <th>Disk</th>
+            <th>Uptime</th>
+            <th>Services</th>
+            <th>Last seen</th>
+          </tr>
+        </thead>
+        <tbody id="host-rows">
+          {% for host in hosts %}
+            <tr class="host-row {% if host.status == 'Unreachable' %}is-down{% elif host.status == 'Degraded' %}is-degraded{% endif %}" data-host="{{ host.name }}">
+              <td>
+                <a href="{{ host.href }}">{{ host.name }}</a>
+                <div class="text-secondary small">{{ host.role }}</div>
+              </td>
+              <td>{{ host.ip }}</td>
+              <td>{{ pill(host.status) }}</td>
+              <td>{{ host.cpu }}{{ meter(host.cpu_value) }}</td>
+              <td>{{ host.memory }}{{ meter(host.memory_value) }}</td>
+              <td>{{ host.disk }}{{ meter(host.disk_value) }}</td>
+              <td>{{ host.uptime }}</td>
+              <td>{{ service_chips(host) }}</td>
+              <td class="small text-secondary">{{ host.last_seen or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-  {% endfor %}
-</div>
-<div class="card mb-4">
-  <div class="card-body">
-    <h2 class="h5">Grafana</h2>
-    {% if grafana_url %}
-      <a class="btn btn-outline-primary" href="{{ grafana_url }}" target="_blank" rel="noopener">Open Grafana</a>
-    {% else %}
-      <p class="mb-0 text-secondary">Grafana is not configured.</p>
-    {% endif %}
+  </div>
+  <div>
+    <div class="panel mb-3">
+      <h2>Alerts overview <a class="small" href="{{ url_for('alerts.index') }}">View all</a></h2>
+      <div id="alert-list">
+        {% for alert in alerts %}
+          <div class="alert-item">
+            <div>
+              <strong>{{ alert.name }}</strong>
+              <div class="text-secondary small">{{ alert.server or 'unmapped' }} · {{ alert.summary }}</div>
+            </div>
+            {{ pill(alert.severity) }}
+          </div>
+        {% else %}
+          <p class="text-secondary mb-0">No firing alerts on WEB01, APP01, WIN01, or MON01.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Service status</h2>
+      <div id="service-list">
+        {% for service in services %}
+          <button type="button" class="service-item {% if service.status == 'DOWN' %}down{% endif %}" data-host="{{ service.host }}" data-check="{{ service.name }}">
+            <div>
+              <strong>{{ service.host }} · {{ service.name }}</strong>
+            </div>
+            <div class="text-end">
+              {{ pill(service.status) }}
+              <div class="text-secondary small">{{ service.latency_ms ~ ' ms' if service.latency_ms is not none else '—' }}</div>
+            </div>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="chart-grid">
+  <div class="panel">
+    <h2>Server status distribution</h2>
+    <div class="donut" id="status-donut"></div>
+    <div class="legend" id="status-legend">Healthy {{ kpis.healthy }} · Degraded {{ kpis.degraded }} · Unreachable {{ kpis.unreachable }}</div>
+  </div>
+  <div class="panel">
+    <h2>CPU usage by server</h2>
+    <div id="cpu-bars">
+      {% for host in hosts %}
+        <div class="bar-row"><span>{{ host.name }}</span>{{ meter(host.cpu_value) }}<span>{{ host.cpu }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Memory usage by server</h2>
+    <div id="mem-bars">
+      {% for host in hosts %}
+        <div class="bar-row"><span>{{ host.name }}</span>{{ meter(host.memory_value) }}<span>{{ host.memory }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Disk usage by server</h2>
+    <div id="disk-bars">
+      {% for host in hosts %}
+        <div class="bar-row"><span>{{ host.name }}</span>{{ meter(host.disk_value) }}<span>{{ host.disk }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<p class="text-secondary small mt-3 mb-0">
+  Host CPU/RAM/Disk/Uptime come from Node Exporter :9100 or Windows Exporter :9182.
+  Monitoring backend is Prometheus :9090. Grafana :3000 is a MON01 service check.
+  {% if current_user.role == 'admin' and grafana_url %}
+    <a href="{{ grafana_url }}" target="_blank" rel="noopener">Open Grafana</a>
+  {% elif current_user.role != 'admin' %}
+    Ask an administrator if you need Grafana access.
+  {% endif %}
+</p>
+
+<div id="log-drawer" class="log-drawer" hidden>
+  <div class="log-drawer-panel" role="dialog" aria-labelledby="log-title">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h2 class="h5 mb-1" id="log-title">Event log</h2>
+        <div class="text-secondary small" id="log-subtitle"></div>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-light" id="log-close">Close</button>
+    </div>
+    <div class="metric-row mb-3" id="log-metrics"></div>
+    <div id="log-events" class="log-events"></div>
   </div>
 </div>
-<h2 class="h5">Recent jobs</h2>
-<div class="table-responsive card">
-  <table class="table mb-0">
-    <thead><tr><th>Action</th><th>Status</th><th>Executor</th><th>When</th></tr></thead>
-    <tbody>
-      {% for job in recent_jobs %}
-        <tr>
-          <td>{{ job.action_key }}</td>
-          <td><span class="badge text-bg-{{ badge_class(job.status) }}">{{ job.status }}</span></td>
-          <td>{{ job.executor }}</td>
-          <td>{{ job.created_at | dt }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="4" class="text-secondary">No jobs yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 {% endblock %}

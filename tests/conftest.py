@@ -7,6 +7,12 @@ from app import create_app
 from app.extensions import db
 
 
+@pytest.fixture(autouse=True)
+def fast_probes(monkeypatch):
+    monkeypatch.setattr("app.services.metrics.http_probe", lambda url, timeout=2: False)
+    monkeypatch.setattr("app.services.metrics.tcp_probe", lambda host, port, timeout=2: False)
+
+
 @pytest.fixture
 def app(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_USER_PASSWORD", "demo-pass")
@@ -26,6 +32,8 @@ def app(tmp_path, monkeypatch):
             "AUTOMATION_EXECUTOR": "mock",
             "AUTO_REMEDIATION_ENABLED": False,
             "GRAFANA_BASE_URL": "",
+            "ALERTMANAGER_WEBHOOK_TOKEN": None,
+            "PROBE_TIMEOUT_SECONDS": 0.2,
             "JOB_OUTPUT_MAX_CHARS": 4000,
             "SESSION_COOKIE_SECURE": False,
         }

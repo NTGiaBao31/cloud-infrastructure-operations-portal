@@ -24,17 +24,17 @@
 <div class="table-responsive card">
   <table class="table mb-0 align-middle">
     <thead>
-      <tr><th>Name</th><th>Server</th><th>Severity</th><th>Status</th><th>Summary</th><th>Started</th><th></th></tr>
+      <tr><th>Server</th><th>Alert name</th><th>Severity</th><th>Status</th><th>Started at</th><th>Resolved at</th><th></th></tr>
     </thead>
     <tbody>
       {% for alert in alerts %}
         <tr>
-          <td>{{ alert.alert_name }}</td>
           <td>{% if alert.server %}<a href="{{ url_for('servers.detail', server_id=alert.server.id) }}">{{ alert.server.name }}</a>{% else %}—{% endif %}</td>
+          <td>{{ alert.alert_name }}</td>
           <td><span class="badge text-bg-{{ badge_class(alert.severity) }}">{{ alert.severity }}</span></td>
           <td><span class="badge text-bg-{{ badge_class(alert.status) }}">{{ alert.status }}</span></td>
-          <td>{{ alert.summary }}</td>
           <td>{{ alert.starts_at | dt }}</td>
+          <td>{{ alert.resolved_at | dt }}</td>
           <td>
             {% if alert.status == 'firing' and current_user.role in ['operator', 'admin'] %}
               <form method="post" action="{{ url_for('alerts.acknowledge', alert_id=alert.id) }}">
